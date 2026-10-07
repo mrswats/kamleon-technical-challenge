@@ -4,6 +4,10 @@
 #
 #    pip-compile --extra=test --generate-hashes --output-file=test-requirements.txt pyproject.toml
 #
+asgiref==3.12.1 \
+    --hash=sha256:59dcb51c272ad209d59bed5708a64a333083e86017d7fcdd67498eeab7784340 \
+    --hash=sha256:fe386d1c2bff7259ea95929266d12a8cf9a8b5a1c2598402967d8792e7a7c094
+    # via django
 covdefaults==2.3.0 \
     --hash=sha256:2832961f6ffcfe4b57c338bc3418a3526f495c26fb9c54565409c5532f7c41be \
     --hash=sha256:4e99f679f12d792bc62e5510fa3eb59546ed47bd569e36e4fddc4081c9c3ebf7
@@ -103,6 +107,10 @@ coverage[toml]==7.15.0 \
     # via
     #   covdefaults
     #   pytest-cov
+django==6.1.2 \
+    --hash=sha256:141efee6ec64d1db6db90683bf734c550102450f444fb099063b0be1bd27d991 \
+    --hash=sha256:a1e92451ccb8b514e91bbb3b6d186d20b4030558f116b5d9de6535455ff210b7
+    # via awesome-python-project (pyproject.toml)
 execnet==2.1.2 \
     --hash=sha256:63d83bfdd9a23e35b9c6a3261412324f964c2ec8dcd8d3c6916ee9373e0befcd \
     --hash=sha256:67fba928dd5a544b783f6056f449e5e3931a5c378b128bc18501f7ea79e296ec
@@ -131,11 +139,16 @@ pytest==9.1.1 \
     # via
     #   awesome-python-project (pyproject.toml)
     #   pytest-cov
+    #   pytest-django
     #   pytest-randomly
     #   pytest-xdist
 pytest-cov==7.1.0 \
     --hash=sha256:30674f2b5f6351aa09702a9c8c364f6a01c27aae0c1366ae8016160d1efc56b2 \
     --hash=sha256:a0461110b7865f9a271aa1b51e516c9a95de9d696734a2f71e3e78f46e1d4678
+    # via awesome-python-project (pyproject.toml)
+pytest-django==4.14.0 \
+    --hash=sha256:26787dd3f422cfbab8f55b80a776e2edea7a11092cb74e960bef1312515708ef \
+    --hash=sha256:c533b08d89cc675efcd5398eea270b34547e35f9a3608e2c9748dd88428ea187
     # via awesome-python-project (pyproject.toml)
 pytest-randomly==4.1.0 \
     --hash=sha256:47f1d9746c3bc3efabd53ae1ebfb8bb385cf3d4df4b505b6d58d9c97a3dfe70f \
@@ -145,6 +158,10 @@ pytest-xdist==3.8.0 \
     --hash=sha256:202ca578cfeb7370784a8c33d6d05bc6e13b4f25b5053c30a152269fd10f0b88 \
     --hash=sha256:7e578125ec9bc6050861aa93f2d59f1d8d085595d6551c2c90b6f4fad8d3a9f1
     # via awesome-python-project (pyproject.toml)
+sqlparse==0.6.0 \
+    --hash=sha256:113c35c75365ab9cc9c7231d68c6428fb11c085fc8e9eb1ad659b7ddbf6cd2b9 \
+    --hash=sha256:b861c0288ce2fa56209a9a6412d2e066ac664b3873b89c26c9d8415e8e32996f
+    # via django
 time-machine==3.2.0 \
     --hash=sha256:027c1807efb74d0cd58ad16524dec94212fbe900115d70b0123399883657ac0f \
     --hash=sha256:051de220fdb6e20d648111bbad423d9506fdbb2e44d4429cef3dc0382abf1fc2 \

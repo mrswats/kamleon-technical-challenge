@@ -4,25 +4,31 @@ version = "0.1.0"
 description = ""
 readme = "README.md"
 requires-python = ">=3.14.1"
-license = { file = "LICENSE" }
-dependencies = []
+dependencies = [
+    "django",
+]
+
+[project.license]
+file = "LICENSE"
 
 [project.optional-dependencies]
 test = [
     "covdefaults",
     "pytest",
     "pytest-cov",
+    "pytest-django",
     "pytest-randomly",
     "pytest-xdist",
     "time-machine",
 ]
 
 [build-system]
-requires = ["setuptools"]
+requires = [
+    "setuptools",
+]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages]
-find = {}
+[tool.setuptools.packages.find]
 
 [tool.autoflake]
 recursive = true
@@ -35,8 +41,14 @@ exclude = [
     "tests/",
 ]
 
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "kamleon.settings"
+
+
 [tool.coverage.run]
-plugins = ["covdefaults"]
+plugins = [
+    "covdefaults",
+]
 omit = []
 
 [tool.coverage.html]
