@@ -7,4 +7,5 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("kamleon.identity.urls")),
     path("", include("kamleon.data_collection.urls")),
+    path("", include("kamleon.devices.urls")),
 ]
