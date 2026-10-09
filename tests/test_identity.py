@@ -36,11 +36,11 @@ def retrieve_customer(client, identity_detail_url):
 
 
 def test_identity_list_url(identity_list_url):
-    assert identity_list_url == "/identity/"
+    assert identity_list_url == "/customers/"
 
 
 def test_identity_detail_url(identity_detail_url):
-    assert identity_detail_url("foo-bar") == "/identity/foo-bar/"
+    assert identity_detail_url("foo-bar") == "/customers/foo-bar/"
 
 
 @pytest.mark.django_db

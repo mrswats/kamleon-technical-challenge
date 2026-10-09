@@ -7,7 +7,7 @@ from rest_framework_simplejwt.views import TokenVerifyView
 from kamleon.identity import views
 
 router = routers.SimpleRouter()
-router.register("identity", views.CustomerViewSet, basename="identity")
+router.register("customers", views.CustomerViewSet, basename="identity")
 
 urlpatterns = [
     path("token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
