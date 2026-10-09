@@ -25,7 +25,7 @@ INSTALLED_APPS = [
     "kamleon.health",
     "kamleon.identity",
     "kamleon.devices",
-    "kamleon.data_collection",
+    "kamleon.ingestion",
 ]
 
 MIDDLEWARE = [

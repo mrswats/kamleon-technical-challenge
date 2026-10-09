@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("data_collection", "0001_initial"),
+        ("ingestion", "0001_initial"),
         ("devices", "0001_initial"),
     ]
 

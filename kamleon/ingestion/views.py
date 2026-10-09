@@ -1,10 +1,10 @@
 from rest_framework.mixins import CreateModelMixin
 from rest_framework.viewsets import GenericViewSet
 
-from kamleon.data_collection import models
-from kamleon.data_collection import serializers
-from kamleon.data_collection.queues import default
-from kamleon.data_collection.tasks import process_measurement
+from kamleon.ingestion import models
+from kamleon.ingestion import serializers
+from kamleon.ingestion.queues import default
+from kamleon.ingestion.tasks import process_measurement
 
 
 class MeasurementViewSet(CreateModelMixin, GenericViewSet):

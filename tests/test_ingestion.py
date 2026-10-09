@@ -8,9 +8,9 @@ import rq
 from django.urls import reverse
 from rest_framework.response import Response
 
-from kamleon.data_collection import models
-from kamleon.data_collection import tasks
-from kamleon.data_collection import views
+from kamleon.ingestion import models
+from kamleon.ingestion import tasks
+from kamleon.ingestion import views
 
 
 @pytest.fixture

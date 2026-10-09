@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from kamleon.data_collection import models
+from kamleon.ingestion import models
 
 
 class MeasurementSerializer(serializers.ModelSerializer):

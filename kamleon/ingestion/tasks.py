@@ -1,7 +1,7 @@
 from typing import Any
 
-from kamleon.data_collection import models
 from kamleon.devices import models as device_models
+from kamleon.ingestion import models
 
 
 class IngestionError(Exception):
