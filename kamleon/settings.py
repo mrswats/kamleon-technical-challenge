@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "django_simple_docs",
     "drf_spectacular",
+    "kamleon.health",
     "kamleon.identity",
     "kamleon.devices",
     "kamleon.data_collection",
