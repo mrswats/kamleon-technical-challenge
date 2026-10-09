@@ -1,4 +1,10 @@
+import random
+
 from django.db import models
+
+
+def default_serial_number() -> int:
+    return random.randint(100_000_000, 999_999_999)
 
 
 class StatusChoices(models.TextChoices):
@@ -8,11 +14,15 @@ class StatusChoices(models.TextChoices):
 
 
 class Device(models.Model):
-    serial_number = models.CharField(max_length=50)
     customer = models.ForeignKey(
         "identity.Customer",
         on_delete=models.DO_NOTHING,
         verbose_name="devices",
+    )
+    serial_number = models.PositiveIntegerField(
+        default=default_serial_number,
+        unique=True,
+        db_index=True,
     )
     status = models.CharField(
         max_length=50,

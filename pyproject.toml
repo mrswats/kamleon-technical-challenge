@@ -6,6 +6,11 @@ readme = "README.md"
 requires-python = ">=3.14.1"
 dependencies = [
     "django",
+    "django-rest-framework",
+    "django-simple-docs",
+    "djangorestframework-simplejwt[crypto]",
+    "redis",
+    "rq",
 ]
 
 [project.license]
@@ -14,6 +19,7 @@ file = "LICENSE"
 [project.optional-dependencies]
 test = [
     "covdefaults",
+    "fakeredis",
     "pytest",
     "pytest-cov",
     "pytest-django",
@@ -44,12 +50,16 @@ exclude = [
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "kamleon.settings"
 
-
 [tool.coverage.run]
 plugins = [
     "covdefaults",
 ]
-omit = []
+omit = [
+    "manage.py",
+    "testing/**",
+    "kamleon/asgi.py",
+    "kamleon/wsgi.py",
+]
 
 [tool.coverage.html]
 directory = "artifacts/htmlcov/"

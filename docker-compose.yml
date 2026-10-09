@@ -1,0 +1,13 @@
+---
+services:
+  db:
+    image: postgres:latest
+    ports:
+      - 5432:5432
+    environment:
+      REDIS_URL: redis://cache:6379/0
+
+  cache:
+    image: redis:latest
+    ports:
+      - 6379:6379

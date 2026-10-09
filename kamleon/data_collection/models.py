@@ -9,9 +9,15 @@ class Measurement(models.Model):
         on_delete=models.DO_NOTHING,
         verbose_name="measurements",
     )
-    kuid = models.UUIDField(default=uuid.uuid4)
+    measurement_hash = models.PositiveIntegerField(
+        unique=True,
+    )
+    kuid = models.UUIDField(
+        default=uuid.uuid4,
+        db_index=True,
+    )
     m_type = models.CharField(max_length=50)
-    value = models.JSONField(default=list)
+    value = models.JSONField()
     unit = models.CharField(max_length=50)
     timestamp = models.FloatField()
     created_at = models.DateTimeField(auto_now_add=True)
