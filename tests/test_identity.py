@@ -94,7 +94,7 @@ def test_identity_create_customer_data(create_customer):
         "updated_at": mock.ANY,
         "user": {
             "email": "",
-            "username": "katie",
+            "username": "Katie",
             "first_name": "",
             "last_name": "",
         },
