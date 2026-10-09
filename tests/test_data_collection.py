@@ -76,13 +76,27 @@ def test_measurement_create_data(create_measurement, device):
 def test_measurement_create_task_is_idempotent(device):
     hash = 314159262
     data = {
-        "device": device,
         "m_type": "foo",
         "unit": "bar",
         "value": [3, 1, 4, 1, 5],
         "timestamp": time.time(),
-        "measurement_hash": hash,
     }
-    tasks.process_measurement(data)
-    tasks.process_measurement(data)
+    tasks.process_measurement(device.serial_number, hash, data)
+    tasks.process_measurement(device.serial_number, hash, data)
     assert models.Measurement.objects.filter(measurement_hash=hash).count() == 1
+
+
+@pytest.mark.django_db
+def test_measurement_create_task_raises_error_for_unexisting_devices():
+    hash = 314159262
+    data = {
+        "m_type": "foo",
+        "unit": "bar",
+        "value": [3, 1, 4, 1, 5],
+        "timestamp": time.time(),
+    }
+
+    with pytest.raises(tasks.IngestionError) as exc:
+        tasks.process_measurement(314159262, hash, data)
+
+    assert exc.value.args == ("Device not found",)
