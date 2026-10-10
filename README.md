@@ -30,6 +30,20 @@ docker compose up -d
 
 Then, the API server is accessible on `http://localhost:8080/`
 
+### Running migrations
+
+Running migrations is very easy. Run the migrations on SQLite, locally:
+
+```console
+./manage.py migrate
+```
+
+Running migrations with production like settings
+
+```console
+./manage.py migrate --settings kamleon.settings.production
+```
+
 ## Tests
 
 Using pytest for Tests, and getting a coverage report in terminal.
@@ -37,6 +51,11 @@ Using pytest for Tests, and getting a coverage report in terminal.
 ```console
 python -m pytest --cov --cov-report term-missing
 ```
+
+> [!NOTE]: Tests run in a SQLite in memory database for performance reasons. In
+> production, the application runs with a PostgreSQL database instead. For
+> example, using the docker compose will spin up a PostgreSQL database in a
+> container.
 
 ## Formatting and Linting
 
