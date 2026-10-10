@@ -9,6 +9,8 @@ dependencies = [
     "django-rest-framework",
     "django-simple-docs",
     "djangorestframework-simplejwt[crypto]",
+    "gunicorn",
+    "psycopg[binary]",
     "redis",
     "rq",
 ]
@@ -48,7 +50,7 @@ exclude = [
 ]
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "kamleon.settings"
+DJANGO_SETTINGS_MODULE = "tests.settings"
 
 [tool.coverage.run]
 plugins = [
@@ -59,6 +61,7 @@ omit = [
     "testing/**",
     "kamleon/asgi.py",
     "kamleon/wsgi.py",
+    "kamleon/settings/*.py",
 ]
 
 [tool.coverage.html]

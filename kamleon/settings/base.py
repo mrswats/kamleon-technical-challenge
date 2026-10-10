@@ -4,14 +4,6 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-SECRET_KEY = "django-insecure-bk+f5v(+y&f^i^g2jr4_4(rk2jc#nqo6rn2i64di6n#(vzr+4e"
-
-DEBUG = True
-
-ALLOWED_HOSTS = []
-
-AUTH_USER_MODEL = "identity.User"
-
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -27,6 +19,8 @@ INSTALLED_APPS = [
     "kamleon.devices",
     "kamleon.ingestion",
 ]
+
+AUTH_USER_MODEL = "identity.User"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -71,30 +65,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "kamleon.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "kamleon.db",
-    }
-}
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-
-
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
-]
 
 
 LANGUAGE_CODE = "en-us"
