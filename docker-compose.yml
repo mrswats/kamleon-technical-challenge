@@ -5,9 +5,29 @@ services:
     ports:
       - 5432:5432
     environment:
-      REDIS_URL: redis://cache:6379/0
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
 
   cache:
     image: redis:latest
     ports:
       - 6379:6379
+
+  api:
+    image: kamleon:local
+    build: .
+    ports:
+      - 8080:8080
+    environment:
+      SECRET_KEY: '(w4yh%mi=m+97ftp+(gv2#gtkv22z$(4elyjkw$+s!jzco1!w%'
+      ALLOWED_HOSTS: localhost
+      REDIS_URL: redis://cache:6379/0
+      DATABASE_NAME: postgres
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_HOST: db
+
+    depends_on:
+      - db
+      - cache
