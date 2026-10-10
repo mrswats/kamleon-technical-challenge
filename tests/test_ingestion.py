@@ -73,6 +73,21 @@ def test_measurement_create_data(create_measurement, device):
 
 
 @pytest.mark.django_db
+def test_measurement_create_enqueues_task(create_measurement, device, m_queue):
+    create_measurement(
+        {
+            "serial_number": device.serial_number,
+            "m_type": "foo",
+            "unit": "bar",
+            "value": [3, 1, 4, 1, 5],
+            "timestamp": time.time(),
+        }
+    )
+
+    assert len(m_queue.jobs) == 1
+
+
+@pytest.mark.django_db
 def test_measurement_create_task_is_idempotent(device):
     hash = 314159262
     data = {
