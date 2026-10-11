@@ -51,13 +51,20 @@ include = [
 recursive = true
 
 [tool.mypy]
-files = "."
-ignore_missing_imports = true
+python_version = "3.14"
 strict = true
-exclude = [
-    "tests/",
-    "migrations/",
-]
+plugins = ["pydantic.mypy"]
+files = ["kamleon"]
+# Remove ignore_missing_imports and the global exclude.
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*", "migrations.*"]
+ignore_errors = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

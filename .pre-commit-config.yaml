@@ -27,6 +27,22 @@ repos:
     rev: v3.21.2
     hooks:
       - id: pyupgrade
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v2.3.1
+    hooks:
+      - id: mypy
+        language_version: "3.14"
+        pass_filenames: false
+        args:
+          - --config-file=pyproject.toml
+          - kamleon
+        additional_dependencies:
+          - fastapi
+          - pydantic[email]
+          - pydantic-settings
+          - sqlalchemy[asyncio]
+          - alembic
+          - psycopg[binary]
   - repo: https://github.com/PyCQA/flake8
     rev: 7.3.0
     hooks:

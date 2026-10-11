@@ -493,10 +493,6 @@ the same context.
 
 ## AI-assisted development
 
-> **TODO before submitting:** this section must be your own account. The notes below state
-> what can be said factually from how this solution was produced; complete or correct the
-> rest so that it is true.
-
 - **Tools used:** Claude (Anthropic), as a chat/coding assistant.
 - **What I used it for:** reviewing my first submission against the brief, and porting the
   service from Django/DRF to FastAPI/SQLAlchemy/Alembic while keeping the project structure,
@@ -505,8 +501,11 @@ the same context.
   (unique-constraint idempotency, 20 parallel identical inserts producing one row, the
   `FOR SHARE` lock delaying a concurrent status update, `ON DELETE RESTRICT`) was checked by
   hand against a real PostgreSQL 16. The Pydantic validation rules were exercised in isolation.
-  <!-- TODO: add the commands you ran and their results: pytest, mypy, pre-commit, docker compose up -->
-- **An AI-generated suggestion I changed or rejected:**
-  <!-- TODO: write one real example from your own review of the code. -->
-- **AGENTS.md / skills used:**
-  <!-- TODO: state which, if any (own or public) and what they do; otherwise "none". -->
+- **An AI-generated suggestion I changed or rejected:** I took the structure
+  from the virst django version, which uses an app approach, and ported it to
+  FastAPI as the assignement requires. And I kept adding features and tools I
+  find appropriate and nice to work with: integration tests, pre-commit, mypy,
+  etc.
+- **AGENTS.md / skills used:** Did not use any AGENTS.md or skills. Used Claude
+  chat directly and directed it to get to the place I wanted it with testing,
+  engineering practices, linting, formatting, etc.
