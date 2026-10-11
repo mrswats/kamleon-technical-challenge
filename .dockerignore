@@ -1,0 +1,27 @@
+# Allowlist: send the build context only what the Dockerfile COPYs.
+# Anything not listed below (git history, tests, CI config, caches, local env files,
+# the stray zip and nested folder, images, lockfiles for tests...) never reaches the
+# Docker daemon, so builds are faster and secrets in a local .env cannot leak into a layer.
+#
+# If you add a COPY to the Dockerfile, add its source here too.
+
+*
+
+# Packaging metadata and (optional) hash-pinned runtime lockfile
+!pyproject.toml
+!README.md
+!LICENSE
+!requirements.txt
+
+# Application
+!kamleon/
+!alembic.ini
+!migrations/
+!gunicorn.conf.py
+!entrypoint.sh
+
+# Never ship bytecode or caches, even from inside the allowed folders
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.mypy_cache/
