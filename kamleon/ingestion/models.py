@@ -9,7 +9,8 @@ class Measurement(models.Model):
         on_delete=models.DO_NOTHING,
         verbose_name="measurements",
     )
-    measurement_hash = models.PositiveIntegerField(
+    measurement_hash = models.CharField(
+        max_length=256,
         unique=True,
     )
     kuid = models.UUIDField(
@@ -22,3 +23,6 @@ class Measurement(models.Model):
     timestamp = models.FloatField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-timestamp"]

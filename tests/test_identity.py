@@ -54,14 +54,11 @@ def test_identity_retrieve_customer_data(retrieve_customer, customer):
     response = retrieve_customer(customer.kid)
     assert response.json() == {
         "created_at": mock.ANY,
+        "email": "steve@example.com",
         "kid": mock.ANY,
+        "name": "Steve",
         "updated_at": mock.ANY,
-        "user": {
-            "email": "",
-            "username": "Steve",
-            "first_name": "",
-            "last_name": "",
-        },
+        "username": "steve",
     }
 
 
@@ -69,10 +66,10 @@ def test_identity_retrieve_customer_data(retrieve_customer, customer):
 def test_identity_create_customer_status_code(create_customer):
     response = create_customer(
         {
-            "user": {
-                "username": "Katie",
-                "password": "badpassword",
-            }
+            "email": "katie@example.com",
+            "name": "Katie",
+            "username": "katie",
+            "password": "badpassword",
         }
     )
     assert response.status_code == HTTPStatus.CREATED
@@ -82,20 +79,17 @@ def test_identity_create_customer_status_code(create_customer):
 def test_identity_create_customer_data(create_customer):
     response = create_customer(
         {
-            "user": {
-                "username": "Katie",
-                "password": "badpassword",
-            }
+            "email": "katie@example.com",
+            "name": "Katie",
+            "username": "katie",
+            "password": "badpassword",
         }
     )
     assert response.json() == {
         "created_at": mock.ANY,
+        "email": "katie@example.com",
         "kid": mock.ANY,
+        "name": "Katie",
         "updated_at": mock.ANY,
-        "user": {
-            "email": "",
-            "username": "Katie",
-            "first_name": "",
-            "last_name": "",
-        },
+        "username": "katie",
     }

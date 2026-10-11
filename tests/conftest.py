@@ -1,22 +1,20 @@
+import time
+
 import fakeredis
 import pytest
 from rest_framework.test import APIClient
 
 from kamleon.devices import models as device_models
 from kamleon.identity import models as identity_models
+from kamleon.ingestion import models as ingestion_models
 
 
 @pytest.fixture
-def user() -> identity_models.User:
-    return identity_models.User.objects.create(
-        username="Steve",
-    )
-
-
-@pytest.fixture
-def customer(user):
+def customer():
     return identity_models.Customer.objects.create(
-        user=user,
+        name="Steve",
+        email="steve@example.com",
+        username="steve",
     )
 
 
@@ -29,9 +27,21 @@ def device(customer) -> device_models.Device:
 
 
 @pytest.fixture
-def client(user):
+def measurement(device) -> ingestion_models.Measurement:
+    return ingestion_models.Measurement.objects.create(
+        device=device,
+        measurement_hash="foobarbaz",
+        m_type="foo",
+        value=[3, 1, 4, 1, 5, 9, 2, 6],
+        unit="ml",
+        timestamp=time.time(),
+    )
+
+
+@pytest.fixture
+def client(customer):
     c = APIClient()
-    c.force_authenticate(user)
+    c.force_authenticate(customer)
     return c
 
 

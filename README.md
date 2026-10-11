@@ -7,7 +7,7 @@ This repository contains my solution to the Kamleon Technical Challenge.
 Create a virtual Environment, install dependencies.
 
 ```console
-virtualenv .venv -p pytthon 3.14
+virtualenv .venv -p python 3.14
 source .venv/bin/activate
 pip install -r test-requirements.txt
 ```
@@ -28,7 +28,7 @@ docker compose build
 docker compose up -d
 ```
 
-Then, the API server is accessible on `http://localhost:8080/`
+Then, the API server is accessible on `http://localhost:8000/`
 
 ### Running migrations
 
@@ -72,14 +72,14 @@ The data model is as follows:
 
 ![Data model](./img/models.png)
 
-The data model follows the specification. We have a `Costumer` table which is
+The data model follows the specification. We have a `Custumer` table which is
 related to the `User` model, which contains the authorization data (`username`
 and `password`). The `Customer` model also includes a `kid` field which is a
 unique value for each row, and used to lookup customers during an API call in
 the database.
 
-Then, the `Device` model is related through a foreign key to the `Costumer`, so
-a `Costumer` can have many `Devices`. This model, contains a `status` which
+Then, the `Device` model is related through a foreign key to the `Custumer`, so
+a `Custumer` can have many `Devices`. This model, contains a `status` which
 only accepts three values: `Active`, `Inactive` and `Faulted`. This field could
 be expanded in the future more stats where needed. The `serial_number` is a
 randomly generated on create and it is used as an ID for retriving data from
@@ -90,7 +90,7 @@ Finally, the measurement table, which contains the measurement data: `unit`,
 `Device`. Additionally, a `measurement_hash` field is included so that we have
 an easy way to check whether a measurement exists in the database, with an
 index. This model also includes a `kid` field in the same way as in the
-costumer model.
+custumer model.
 
 All the models contain a `created_at` and an `updated_at` fields that are
 automatically created and updated when appropriate. The foreign keys are
@@ -189,6 +189,14 @@ was tested thoroughly as well.
 
 No AI assistence was used during the development of this challenge.
 
+## Limitations
+
+TODO
+
+## What would I improve with more time
+
+TODO
+
 ## On the choice of framework
 
 The choice of using Django in this challenge was deliverate not only for
@@ -207,3 +215,9 @@ In my experience, other frameworks along with ORMs do not have the luxury of
 being tightly integrated and and thus the integration falls on the hands of the
 developer. This might lead to performance degradation and other nasty surprises
 long after which would then not easily to be solved.
+
+It is also worth mentioning the Django Admin. The Django admin is a django app
+built with django itself which is easily configured which allow superusers to
+view the data in the database with q web interface instead of having to use SQL
+to do so. Moreover, being it sucha a good tool, it also benefits of a lot of
+customizability and packages with added features.

@@ -7,17 +7,29 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
 
   cache:
     image: redis:latest
     ports:
       - 6379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli","ping"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
 
   api:
     image: kamleon:local
     build: .
     ports:
-      - 8080:8080
+      - 8000:8000
     environment:
       SECRET_KEY: '(w4yh%mi=m+97ftp+(gv2#gtkv22z$(4elyjkw$+s!jzco1!w%'
       ALLOWED_HOSTS: localhost
@@ -27,6 +39,19 @@ services:
       DATABASE_PASSWORD: postgres
       DATABASE_PORT: "5432"
       DATABASE_HOST: db
+      MODE: api
+
+    depends_on:
+      - db
+      - cache
+
+  worker:
+    image: kamleon:local
+    build: .
+    environment:
+      MODE: worker
+      DEFAULT_QUEUE: default
+      REDIS_URL: redis://cache:6379/0
 
     depends_on:
       - db

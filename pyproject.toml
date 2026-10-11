@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.14.1"
 dependencies = [
     "django",
+    "django-filter",
     "django-rest-framework",
     "django-simple-docs",
     "djangorestframework-simplejwt[crypto]",
@@ -58,7 +59,7 @@ plugins = [
 ]
 omit = [
     "manage.py",
-    "testing/**",
+    "tests/settings.py",
     "kamleon/asgi.py",
     "kamleon/wsgi.py",
     "kamleon/settings/*.py",

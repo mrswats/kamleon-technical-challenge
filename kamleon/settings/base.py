@@ -12,6 +12,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "django_filters",
     "django_simple_docs",
     "drf_spectacular",
     "kamleon.health",
@@ -20,7 +21,7 @@ INSTALLED_APPS = [
     "kamleon.ingestion",
 ]
 
-AUTH_USER_MODEL = "identity.User"
+AUTH_USER_MODEL = "identity.Customer"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -40,6 +41,9 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,
