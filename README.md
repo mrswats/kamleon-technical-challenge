@@ -95,6 +95,24 @@ python -m pytest -n 4          # in parallel
 - `tests/test_missing_migrations.py` fails when a model changes without a migration, and
   checks that migrations can be reverted and re-applied.
 
+### Integration tests against the Docker image
+
+`tests/integration/` holds black-box tests written with `curl` and `jq`. They exercise the
+production image (gunicorn workers, real PostgreSQL, real parallel connections) rather than
+the in-process app used by the pytest suite:
+
+```console
+tests/integration/run.sh                      # build, start, test, tear down
+BASE_URL=http://localhost:8000 tests/integration/test_api.sh   # against a running API
+```
+
+`run.sh` uses its own Compose project and port (18000), so it can run next to your regular
+`docker compose up`. Besides the API scenarios (validation, idempotent ingestion, filters,
+20-way concurrent ingestion and registration, an ingestion/deactivation race, customer
+erasure) it checks that the container is not root, that data survives an API restart, and
+that `/_health` stays up while `/_health/ready` reports 503 when the database is stopped.
+Requires Docker Compose 2.24+, `curl` and `jq`.
+
 ## API documentation and curl examples
 
 The examples below follow one story. Replace the ids with the ones returned to you.

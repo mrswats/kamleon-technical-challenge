@@ -20,6 +20,7 @@ RUN : && \
     useradd --system --no-create-home app && \
     python -m venv /opt/venv && \
     pip install -r requirements.txt && \
+    chown -R app:app /app && \
     :
 
 USER app

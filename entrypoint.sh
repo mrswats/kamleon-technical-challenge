@@ -8,7 +8,7 @@ main() {
             # Apply pending migrations, then serve. With several replicas, run the
             # `migrate` mode once as a separate job instead.
             alembic upgrade head
-            exec gunicorn "kamleon.asgi:app"
+            exec uvicorn --host 0.0.0.0 --port 8000 "kamleon.asgi:app"
             ;;
         migrate)
             exec alembic upgrade head

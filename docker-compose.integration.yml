@@ -1,0 +1,13 @@
+# Override used by tests/integration/run.sh (not for normal development).
+#
+#   docker compose -p kamleon-it -f docker-compose.yml -f docker-compose.integration.yml up
+#
+# Moves the API to port 18000 and stops publishing the database, so the integration stack
+# can run next to the regular one without port clashes. Requires Docker Compose >= 2.24
+# (for the `!override` and `!reset` tags).
+services:
+  db:
+    ports: !reset []
+  api:
+    ports: !override
+      - "18000:8000"

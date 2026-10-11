@@ -1,0 +1,29 @@
+---
+name: Integration tests
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "main"
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Show tool versions
+        run: |
+          docker compose version
+          jq --version
+
+      - name: Run integration tests against the Docker image
+        run: tests/integration/run.sh
