@@ -1,13 +1,22 @@
 import uuid
+from datetime import datetime
 
-from django.contrib.auth import models as auth_models
-from django.db import models
-from django.utils.translation import gettext_lazy as _
+from sqlalchemy import DateTime
+from sqlalchemy import String
+from sqlalchemy import Uuid
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
+
+from kamleon.db import Base
+from kamleon.db import TimestampMixin
 
 
-class Customer(auth_models.AbstractUser):
-    email = models.EmailField(_("email address"))
-    name = models.CharField(_("first name"), max_length=150)
-    kid = models.UUIDField(default=uuid.uuid4, db_index=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+class Customer(TimestampMixin, Base):
+    __tablename__ = "customers"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(150))
+    email: Mapped[str] = mapped_column(String(320), unique=True)
+    # Set when the customer is "deleted". The row is kept (devices and measurements still
+    # reference it) but its personal data is anonymised. See `service.delete_customer`.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

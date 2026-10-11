@@ -1,284 +1,494 @@
 # Kamleon Technical Challenge
 
-This repository contains my solution to the Kamleon Technical Challenge.
+A small backend service that manages **customers**, their connected **devices** and the
+**measurements** those devices generate.
 
-## Installation
+**Stack:** Python 3.14 · FastAPI · Pydantic v2 · SQLAlchemy 2.0 (async, psycopg 3) ·
+PostgreSQL 17 · Alembic · pytest.
 
-Create a virtual Environment, install dependencies.
+- [Running the application](#running-the-application)
+- [Running the tests](#running-the-tests)
+- [API documentation and curl examples](#api-documentation-and-curl-examples)
+- [Data model](#data-model)
+- [Main technical decisions and assumptions](#main-technical-decisions-and-assumptions)
+- [Known limitations](#known-limitations)
+- [What I would improve with more time](#what-i-would-improve-with-more-time)
+- [Data protection and security proposals](#data-protection-and-security-proposals)
+- [Monitoring and observability](#monitoring-and-observability)
+- [Code quality and testing strategy](#code-quality-and-testing-strategy)
+- [AI-assisted development](#ai-assisted-development)
+
+## Running the application
+
+### With Docker (recommended)
 
 ```console
-virtualenv .venv -p python 3.14
+docker compose up --build
+```
+
+This starts PostgreSQL, applies the migrations and serves the API on
+`http://localhost:8000`. Interactive API documentation is at
+[`http://localhost:8000/docs`](http://localhost:8000/docs) (Swagger UI), with ReDoc at
+`/redoc` and the OpenAPI schema at `/openapi.json`.
+
+### Without Docker for the API
+
+You still need a PostgreSQL. The compose file provides one:
+
+```console
+docker compose up -d db
+
+python3.14 -m venv .venv
 source .venv/bin/activate
-pip install -r test-requirements.txt
+pip install -e ".[test,dev]"
+
+alembic upgrade head
+uvicorn kamleon.asgi:app --reload
 ```
 
-### Running locally
+The only setting is `DATABASE_URL` (environment variable or a local `.env` file). Its
+default, `postgresql+psycopg://postgres:postgres@localhost:5432/postgres`, matches the
+compose database.
 
-Development server:
+### Migrations
 
 ```console
-./manage.py migrate
-./manage.py runserver
+alembic upgrade head                              # apply
+alembic revision --autogenerate -m "describe it"  # after changing a model
+alembic downgrade -1                              # revert the last one
 ```
 
-### Running Docker locally
+The container applies pending migrations on start (`MODE=api`). `MODE=migrate` runs them
+and exits, which is what you would use as a one-off job when running several replicas.
+
+### Dependency lockfiles
+
+Dependencies are declared in `pyproject.toml`. To pin them with hashes (what the Dockerfile
+and CI use automatically when the files exist):
 
 ```console
-docker compose build
-docker compose up -d
+pip install pip-tools
+pip-compile --generate-hashes pyproject.toml -o requirements.txt
+pip-compile --generate-hashes --extra test pyproject.toml -o test-requirements.txt
 ```
 
-Then, the API server is accessible on `http://localhost:8000/`
+Dependabot keeps them up to date.
 
-### Running migrations
+## Running the tests
 
-Running migrations is very easy. Run the migrations on SQLite, locally:
-
-```console
-./manage.py migrate
-```
-
-Running migrations with production like settings
+The tests run against a **real PostgreSQL**: the behaviour that matters here (unique
+constraints, `ON CONFLICT`, row locks, concurrent requests) is PostgreSQL behaviour and
+cannot be verified on SQLite.
 
 ```console
-./manage.py migrate --settings kamleon.settings.production
-```
-
-## Tests
-
-Using pytest for Tests, and getting a coverage report in terminal.
-
-```console
+docker compose up -d db
 python -m pytest --cov --cov-report term-missing
+python -m pytest -n 4          # in parallel
 ```
 
-> [!NOTE]: Tests run in a SQLite in memory database for performance reasons. In
-> production, the application runs with a PostgreSQL database instead. For
-> example, using the docker compose will spin up a PostgreSQL database in a
-> container.
+- `TEST_DATABASE_URL` (default: the compose database) must point at a server whose user
+  can create databases.
+- Every pytest-xdist worker creates its **own database**, builds it by running the real
+  Alembic migrations, and drops it at the end. Tables are truncated between tests, so tests
+  are isolated and `pytest-randomly` can shuffle them.
+- `covdefaults` fails the run below 100 % coverage (test code included).
+- `tests/test_missing_migrations.py` fails when a model changes without a migration, and
+  checks that migrations can be reverted and re-applied.
 
-## Formatting and Linting
+## API documentation and curl examples
 
-Using pre-commit for linting and formatting
+The examples below follow one story. Replace the ids with the ones returned to you.
 
 ```console
-pre-commit install
-pre-commit run --all-files
+BASE=http://localhost:8000
 ```
+
+**Create a customer**: `POST /customers`
+
+```console
+curl -s -X POST $BASE/customers \
+  -H 'content-type: application/json' \
+  -d '{"name": "Ada Lovelace", "email": "ada@example.com"}'
+```
+```json
+{"id": "6f1c0a52-3a0e-4d57-9d6c-0f3b1c1f5a10", "name": "Ada Lovelace",
+ "email": "ada@example.com", "created_at": "2026-10-11T10:00:00Z",
+ "updated_at": "2026-10-11T10:00:00Z"}
+```
+
+```console
+CUSTOMER=6f1c0a52-3a0e-4d57-9d6c-0f3b1c1f5a10
+```
+
+**Retrieve a customer**: `GET /customers/{id}`
+
+```console
+curl -s $BASE/customers/$CUSTOMER
+```
+
+**Register a device for the customer**: `POST /customers/{id}/devices`
+
+The serial number is the factory serial, chosen by the caller, and is globally unique. A new
+device starts `INACTIVE`.
+
+```console
+curl -s -X POST $BASE/customers/$CUSTOMER/devices \
+  -H 'content-type: application/json' \
+  -d '{"serial_number": "KML-000123"}'
+```
+```json
+{"id": "0b7e...", "serial_number": "KML-000123", "customer_id": "6f1c...",
+ "status": "INACTIVE", "created_at": "...", "updated_at": "..."}
+```
+
+**List a customer's devices**: `GET /customers/{id}/devices?limit=10&offset=0`
+
+```console
+curl -s "$BASE/customers/$CUSTOMER/devices?limit=10&offset=0"
+```
+```json
+{"count": 1, "limit": 10, "offset": 0, "results": [{"serial_number": "KML-000123", "...": "..."}]}
+```
+
+**Retrieve a device**: `GET /devices/{serial_number}`
+
+```console
+curl -s $BASE/devices/KML-000123
+```
+
+**Activate / deactivate a device**: `PATCH /devices/{serial_number}/status`
+
+Statuses are `ACTIVE`, `INACTIVE` and `FAULTY`. Only `status` can be sent.
+
+```console
+curl -s -X PATCH $BASE/devices/KML-000123/status \
+  -H 'content-type: application/json' \
+  -d '{"status": "ACTIVE"}'
+```
+
+**Ingest a measurement**: `POST /devices/{serial_number}/measurements`
+
+Idempotent. A measurement is identified by *(device, type, timestamp)*. `timestamp` must
+carry a timezone.
+
+```console
+curl -s -i -X POST $BASE/devices/KML-000123/measurements \
+  -H 'content-type: application/json' \
+  -d '{"type": "temperature", "value": 21.5, "unit": "celsius",
+       "timestamp": "2026-01-01T12:00:00Z"}'
+```
+```
+HTTP/1.1 201 Created
+{"id": 1, "device_id": "0b7e...", "type": "temperature", "value": 21.5,
+ "unit": "celsius", "timestamp": "2026-01-01T12:00:00Z", "created_at": "..."}
+```
+
+Run the same command again (a network retry) and you get `200 OK` with the same stored
+measurement and no duplicate. Send the same *(type, timestamp)* with a different value or
+unit and you get `409`.
+
+**List a device's measurements**: `GET /devices/{serial_number}/measurements`
+
+Newest first. Filters: `type`, `timestamp_after`, `timestamp_before` (both inclusive, they
+filter on when the measurement was *generated*), plus `limit` (1-100, default 10) and
+`offset`.
+
+```console
+curl -s "$BASE/devices/KML-000123/measurements?type=temperature&timestamp_after=2026-01-01T00:00:00Z&timestamp_before=2026-01-02T00:00:00Z&limit=50"
+```
+```json
+{"count": 1, "limit": 50, "offset": 0, "results": [{"id": 1, "type": "temperature", "...": "..."}]}
+```
+
+**Delete a customer**: `DELETE /customers/{id}`
+
+Erases the customer's personal data and deactivates their devices; devices and measurements
+are kept (see [the decision below](#what-happens-when-a-customer-is-deleted)).
+
+```console
+curl -s -i -X DELETE $BASE/customers/$CUSTOMER      # 204 No Content
+```
+
+**Health checks**
+
+```console
+curl -s $BASE/_health         # {"health": "ok"}, liveness: no database access
+curl -s $BASE/_health/ready   # {"health": "ok", "database": "ok"}, 503 if the DB is unreachable
+```
+
+### Errors
+
+Errors raised by the business rules have the shape `{"detail": "...", "code": "..."}`;
+`code` is stable and meant for clients. Request validation errors keep FastAPI's standard
+`422` body.
+
+| Status | `code` | When |
+| --- | --- | --- |
+| 404 | `customer_not_found` | Unknown (or deleted) customer |
+| 404 | `device_not_found` | Unknown serial number |
+| 409 | `duplicate_email` | Email already used by a customer |
+| 409 | `duplicate_serial_number` | Serial number already registered |
+| 409 | `customer_deleted` | Re-activating a device whose customer was deleted |
+| 409 | `device_not_active` | Ingesting for a device that is not `ACTIVE` |
+| 409 | `measurement_conflict` | Same device/type/timestamp already stored with another value or unit |
+| 422 | `invalid_time_range` | `timestamp_after` is later than `timestamp_before` |
+| 422 | (FastAPI) | Malformed input: missing fields, naive timestamps, NaN, unknown fields... |
+| 503 | | `/_health/ready` cannot reach the database |
 
 ## Data model
 
-The data model is as follows:
+```mermaid
+erDiagram
+    CUSTOMER ||--o{ DEVICE : owns
+    DEVICE ||--o{ MEASUREMENT : generates
 
-![Data model](./img/models.png)
+    CUSTOMER {
+        uuid id PK
+        string name
+        string email UK
+        timestamptz deleted_at "set when erased"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    DEVICE {
+        uuid id PK
+        string serial_number UK
+        uuid customer_id FK
+        string status "ACTIVE | INACTIVE | FAULTY"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    MEASUREMENT {
+        bigint id PK
+        uuid device_id FK
+        string type
+        double value
+        string unit
+        timestamptz timestamp "when the device generated it"
+        timestamptz created_at "when we stored it"
+    }
+```
 
-The data model follows the specification. We have a `Custumer` table which is
-related to the `User` model, which contains the authorization data (`username`
-and `password`). The `Customer` model also includes a `kid` field which is a
-unique value for each row, and used to lookup customers during an API call in
-the database.
+Constraints and indexes (all named deterministically through a SQLAlchemy naming
+convention, so migrations are reproducible and the application can tell *which* constraint
+was violated):
 
-Then, the `Device` model is related through a foreign key to the `Custumer`, so
-a `Custumer` can have many `Devices`. This model, contains a `status` which
-only accepts three values: `Active`, `Inactive` and `Faulted`. This field could
-be expanded in the future more stats where needed. The `serial_number` is a
-randomly generated on create and it is used as an ID for retriving data from
-the API.
+- `customers.email` unique · `devices.serial_number` unique · `devices.status` CHECK in
+  (`ACTIVE`, `INACTIVE`, `FAULTY`).
+- Foreign keys `devices.customer_id → customers.id` and `measurements.device_id →
+  devices.id`, both **`ON DELETE RESTRICT`**.
+- `measurements` **unique on `(device_id, type, timestamp)`**: the natural key that makes
+  ingestion idempotent. It also serves the common query "one device, one type, a time
+  range".
+- `ix_measurements_device_id_timestamp (device_id, timestamp)` for queries without a type
+  filter and for newest-first ordering.
+- `ix_devices_customer_id` for listing a customer's devices.
 
-Finally, the measurement table, which contains the measurement data: `unit`,
-`value`, `type`, `timestamp`. Also, every measurement is associated to a
-`Device`. Additionally, a `measurement_hash` field is included so that we have
-an easy way to check whether a measurement exists in the database, with an
-index. This model also includes a `kid` field in the same way as in the
-custumer model.
+## Main technical decisions and assumptions
 
-All the models contain a `created_at` and an `updated_at` fields that are
-automatically created and updated when appropriate. The foreign keys are
-configured so that no data is deleted when related rows are, so that we do not
-lose any data.
+### Layout
 
-Under the GDPR, when a customer is deleted, their personal data should be
-erased or anonymized, unless we are legally required to retain some of it (for
-example, invoices for tax purposes). Any data that must be retained should be
-separated from the operational database, access to it should be restricted, and
-it should be deleted once the legal retention period expires.
+Each domain (`identity`, `devices`, `ingestion`, `health`) has its own `models`, `schemas`,
+`service` and `router`. Routers only translate HTTP; **services own the business rules and
+the transactions**; models describe the tables. The database engine lives on `app.state`
+(created by the `create_app()` factory), not in globals, so tests build an app that points
+at their own database.
 
-## API Design
+### Idempotent ingestion
 
-The API Design is very straightforward: Two endpoints for customer: retrieving
-and creating, two endpoints for devices: retrieving and creating, and a single
-ingest endpoint. The ingestion ingestion endpoint is idempotent. However, the
-idempotency is implemented with the `measurement_hash` field. So the hash is
-calculated, and checked in the database whether it exists or not. The endpoint
-will always return a `201` HTTP Status regardless the measurement already
-exists or the device is Inactive.
+The same measurement can be delivered several times (network retries), possibly at the same
+instant. Deduplication is delegated to the database instead of a check-then-insert in Python:
 
-The API Documentation can be accessed while running the server at
-[http://localhost:8000/docs/](http://localhost:8000/docs/). The OpenAPI standard
-is used and it includes `curl` examples there.
+1. The device row is locked `FOR SHARE` and checked to be `ACTIVE`.
+2. `INSERT ... ON CONFLICT DO NOTHING` on `(device_id, type, timestamp)`, a single atomic
+   statement.
+3. If the row already existed: **`200`** with the stored measurement when value and unit
+   match (a true retry), **`409`** when they differ. A corrected value is therefore never
+   silently dropped, and a replayed old message can never overwrite newer data.
 
-## Encryption and data communications protocols
+*Assumption:* a device reports at most one value per measurement type per instant. If it
+could legitimately send several, the key would become a device-generated measurement id.
 
-In transit, all data should be transmitted through TLS, in the case of HTTP
-through HTTPS so that the data in encrypted. If further levels were needed from
-the business, it could be added on top og HTTP: Encrypt the body of the
-request/response and decrypt it on the server/client.
+### Concurrency and data integrity
 
-## Authorization and Authentication
+- **Ingest vs. deactivate.** Ingestion holds `FOR SHARE` on the device row; changing a status
+  takes `FOR UPDATE`. Concurrent ingestions do not block each other, but a deactivation waits
+  for in-flight ingestions to commit, and from then on new ones are refused. So no
+  measurement is accepted for a device after it became inactive.
+- **Unique values** (serial number, email, measurement key) are enforced by `UNIQUE`
+  constraints; a lost race becomes a clean `409`, never a `500`.
+- **Customer deletion vs. device registration/activation** are serialised through a lock on
+  the customer row. Locks are always taken customer first, then device, so they cannot
+  deadlock.
+- These behaviours are covered by tests that fire concurrent requests (20 identical
+  ingestions, 10 identical device registrations, ingestions racing a deactivation).
 
-For authentication and authorization, there are a million and one methods to
-accomplish that. The most popular one in my opinion would be JWT (Json Web
-Tokens). JWT allows for stateless authorization seamlessly, and it is easy to
-authenticate a user with it in different services.
+### What happens when a customer is deleted
 
-This would also allow to identify the user and apply filters to the data, as
-well as implement a permission system so that would allow certain users to do
-certain actions.
+A device and its measurements are operational data that may be needed after a customer
+leaves, while the customer's *personal* data must be erasable (GDPR). So `DELETE
+/customers/{id}`:
 
-## Performance considerations
+- **anonymises** the customer (name and email are overwritten, `deleted_at` is set) and
+  frees the email for reuse;
+- **deactivates** the customer's devices so they stop ingesting;
+- **keeps** the devices and measurements, which no longer point to an identifiable person;
+- the foreign keys are `ON DELETE RESTRICT`, so no row can ever be removed by cascade.
 
-Without any more information about the business needs, it is difficult to talk
-about performance optimizations. But it would be easy to add database indexes
-depending on access patterns, for example. Once deployed, it would be easy to
-send some traffic on the service and analyze the hot paths so further studies
-could be done in order to inform the optimization process.
+A deleted customer behaves as not found (`404`), and their devices cannot be re-activated.
 
-In general, an Stateless REST API is easy to scale horizontally, so that more
-requests can be handled per second. Furthermore, it would be interesting to
-add a cache between the web server and the database, so we do not have to access
-the database on every request for often accessed data.
+### Other decisions
 
-Finally, one of the performance optimizations I have implemented, is the use of
-a background job architecture so that the heavy load of looking up the
-measurements and performing the insertion can be done outside the
-request-response cycle and thus making the API much faster to respond. Any errors
-derived from that can be studied and handled separately, if needed. This would
-allow for the integtion endpoint to work much faster and not block the web server
-freeing as well the client for being able to perform more tasks.
+- **FastAPI async + SQLAlchemy 2.0 + psycopg 3.** Ingestion is I/O-bound; the same
+  `postgresql+psycopg://` URL serves the async API and the sync Alembic runs.
+- **No Redis/queue for ingestion.** Ingestion is one cheap indexed statement, so it is done
+  inside the request. That lets the API tell the device the truth (`404`/`409`) and removes a
+  way to lose acknowledged data (a message accepted into a queue that is lost, or rejected
+  later by a worker nobody sees). A queue would be the next step only for batch ingestion at
+  a volume one Postgres cannot absorb.
+- **Identifiers.** Customers and devices use UUIDs (not guessable or enumerable) and devices
+  are addressed by their serial number. Measurements use a `bigint` identity (high volume,
+  cheap to index). The serial number is supplied by the caller: it is the number printed on
+  the product, not something the server should invent.
+- **Time.** `timestamptz` everywhere; request timestamps must be timezone-aware (a naive time
+  is ambiguous and is rejected). Time-range filters apply to the measurement's own
+  `timestamp`, inclusive on both ends, not to when it was stored.
+- **`value` is a finite number** (`double precision`). NaN and Infinity are rejected.
+- **Statuses:** `ACTIVE`, `INACTIVE` (the default for a new device) and `FAULTY`. Only
+  `ACTIVE` devices can ingest.
+- **Pagination:** `limit` (max 100) and `offset`, with a `count`. Simple and predictable.
+- **Two health endpoints:** `/_health` (liveness, never touches the DB, so a database outage
+  does not make an orchestrator restart healthy pods) and `/_health/ready` (readiness).
+- **Authentication is deliberately not implemented**, as allowed by the brief. Unknown
+  request fields are rejected, so credentials cannot be sent by mistake.
 
-## Monitoring and Observability
+## Known limitations
 
-There are many observability tools available. My favourite ones are using
-sentry for error tracking and prometheus for basic application metrics.
-Querying the metrics from grafana would allow us to have an overview of the
-application, and setup alarms that would be able to alert us when the
-application runs slower than usual, or when the worker queue is getting longer
-than we would like, indicating a need for scaling.
+- No authentication or authorisation, and no rate limiting (see the proposals below).
+- One measurement per request. Devices that batch would benefit from a bulk endpoint.
+- `offset` pagination gets slow for very deep pages and `count` scans the filtered rows.
+- The `measurements` table is not partitioned; for large time-series volumes it should be
+  (by time), or moved to TimescaleDB.
+- Customers cannot be updated, and devices and measurements cannot be edited or deleted
+  through the API.
+- Anonymisation is irreversible, and it does not reach database backups, which keep the old
+  data until they expire.
+- The container runs migrations on start. With several replicas starting at once, run the
+  `migrate` mode once as a separate job instead.
+- No load test has been run, so throughput numbers are unmeasured.
 
-## Code quality and maintainability
+## What I would improve with more time
 
-Linters and formatters are very important so that code is consistent all
-throughout the codebase, and it allows us to not have to think about these
-details while writing code, so that we can focus on the business logic.
-Moreover, it allows us to avoid making mistakes in a way that is consistent.
+**Correctness and API**
+- A batch ingestion endpoint (`POST /devices/{sn}/measurements:batch`) returning how many
+  were inserted and how many were duplicates, with the same `ON CONFLICT` approach.
+- Keyset (cursor) pagination on `(timestamp, id)` for measurements.
+- An `Idempotency-Key` header for the create endpoints.
+- Rejecting timestamps unreasonably far in the future.
 
-My preferred stack for code quality tools start by flake8, pyupgrade and black.
-All of these tools run in the pre-commit framework which allows us to run and
-update versions of the tools seemlessly, and run them easily in CI to check
-during pull request review.
+**Data and GDPR**
+- A subject-access / portability export endpoint, an audit log of who read or erased
+  personal data (without storing the data itself), and a scheduled retention job.
+- Pseudonymise instead of overwriting where the business needs to keep statistics per
+  (former) customer.
 
-## Testing strategy
+**Scalability**
+- Time partitioning of `measurements` and a retention/downsampling policy.
+- Read replicas for the query endpoints; PgBouncer in front of Postgres.
+- A load test (k6 or Locust) to find the real bottleneck before optimising.
 
-The testing strategy for web applications is rather straightforward. It does
-not make sense to test the internals, but rather to test the public endpoints
-that are being called by the clients. In this case, tests were added for all
-the endpoints checking both status codes and returned data. Additionally, tests
-for some of the side effects and in particular the worker which while it's not
-part of the public API, it is an important component of the business logic,
-was tested thoroughly as well.
+**Operations**
+- OpenTelemetry instrumentation and the dashboards and alerts described below.
+- Deployment manifests and a CD pipeline (out of scope for this exercise).
 
-## What would I improve with more time
+## Data protection and security proposals
 
-### Correctness and robustness
+1. **GDPR: erasure by anonymisation, plus retention.** Implemented for the primary case:
+   deleting a customer overwrites their personal data and keeps operational data, so the
+   rest of the system keeps working. To complete it: a documented retention period per data
+   category with a scheduled purge job; keep any record the law requires us to retain
+   (e.g. invoices) in a separate, access-restricted store; make sure analytics and logs never
+   contain emails or names (use the customer UUID); and apply the same erasure to backups by
+   expiring them within a bounded window.
+2. **Encryption in transit and at rest.** TLS 1.2+ (preferably 1.3) terminated at the
+   ingress with HSTS, and TLS between the service and PostgreSQL (`sslmode=verify-full`).
+   Encrypt volumes and backups at rest (managed Postgres or disk encryption). For the most
+   sensitive columns (customer email) add application-level encryption with keys held in a
+   KMS and rotated, so a leaked database dump alone is not enough. Encrypting request bodies
+   on top of HTTPS is not worth its key-management cost.
+3. **API authentication for users and services.** OAuth 2.0 / OpenID Connect with
+   short-lived JWT access tokens validated against the identity provider's JWKS, scopes per
+   operation (read, write, admin) and an ownership check on every customer, device and
+   measurement route (a caller only sees their own customers' data). Rate limiting at the
+   gateway and per token.
+4. **Device authentication, separate from user authentication.** Devices should not share
+   a user token. Give each device its own credential: a client certificate (mutual TLS) or a
+   per-device key provisioned at manufacturing and bound to its serial number, revocable
+   when a device is deactivated or marked `FAULTY`. The ingestion route then accepts only
+   the device whose credential matches the serial number in the URL.
 
-Broader tests. Integration tests for the full request cycle, edge cases
-(invalid input, duplicate records, deleting an already-deleted customer), and a
-coverage report in CI. Stricter validation and consistent errors. A single
-error format across all endpoints, with clear status codes. Idempotency and
-concurrency handling. Idempotency keys for create operations and transactions
-or locking where concurrent updates could conflict.
+Also worth having in the pipeline: dependency and image scanning (`pip-audit`, Dependabot,
+Trivy), secrets kept out of the repository, and secure response headers at the gateway.
 
-### Data and GDPR
+## Monitoring and observability
 
-A proper erasure workflow. A deletion endpoint or job that anonymizes
-identifying fields while keeping legally required records (e.g. invoices) in a
-separate, access-restricted store with a defined retention period. Automated
-retention. A scheduled task that purges retained data when its retention period
-expires. Audit logging. A record of who accessed, changed, or deleted personal
-data, without storing the personal data itself in the logs. Data export. An
-endpoint for subject access and portability requests. Soft delete vs. hard
-delete. A clear, documented policy for each model.
+**Stack:** OpenTelemetry instrumentation exporting to Prometheus (metrics), Grafana (dashboards
+and alerting) and a trace backend (Tempo or Jaeger), with structured JSON logs carrying a
+request id shipped to Loki or the platform's log service, and Sentry for grouped exceptions.
+Chosen because it is open standard, vendor-neutral and covers metrics, traces and logs with
+the same context.
 
-### Security
+**What to monitor**
 
-Stronger authentication and permissions. JWT or OAuth2, role-based permissions,
-and per-object access checks. Rate limiting and throttling. DRF throttling at
-minimum, plus protection at the gateway level. Secrets and configuration.
-Environment-based settings, no secrets in the repo, and separate settings per
-environment. Dependency scanning. Tools like pip-audit or Dependabot, plus a
-security headers check.
+- *API (RED):* request rate, error rate (5xx) and latency percentiles (p50/p95/p99) per
+  route; saturation (CPU, memory, workers).
+- *PostgreSQL:* connections and pool usage, slow queries, lock waits and deadlocks,
+  replication lag, disk growth (the `measurements` table is the one that will grow).
+- *Business signals:* measurements ingested per minute; share of `409 device_not_active`
+  (misconfigured or decommissioned devices still sending); share of `measurement_conflict`
+  (a firmware bug re-sending different values for the same instant); and, most valuable,
+  **ACTIVE devices that have gone silent** (no measurement for N times their reporting
+  interval).
+- *Probes:* `/_health` for liveness and `/_health/ready` for readiness; an external
+  synthetic check that creates and reads back a test measurement.
 
-### Performance and scalability
+**Detecting and alerting**
 
-Query optimisation. Fix N+1 queries, add database indexes, and use
-django-debug-toolbar or query logging to find them. Pagination and filtering.
-Cursor-based pagination for large collections. Caching. Redis for frequently
-read, rarely changed data. Production database. Move from SQLite to PostgreSQL
-with connection pooling. Background jobs. Celery or RQ for slow or scheduled
-work such as exports, emails, and retention clean-up. Load testing. Locust or
-k6 to find real bottlenecks instead of guessing.
+- Alert on symptoms users feel, using SLOs with burn-rate alerts (e.g. 99.9 % of ingestions
+  succeed; ingest p99 under 500 ms) rather than on every CPU spike.
+- Cause-based alerts for things that always precede an incident: database connections near
+  the limit, replication lag, disk above 80 %, lock waits, a growing 5xx rate.
+- Route by severity through Alertmanager: page the on-call engineer for SLO burn and
+  database trouble, Slack for warnings (silent devices, conflict rate). Every alert links to
+  a runbook and to the dashboard and traces for the affected route.
 
-## AI Development
+## Code quality and testing strategy
 
-No AI assistence was used during the development of this challenge.
+- **Tooling (pre-commit and CI):** black, flake8 (+ bugbear, comprehensions), pyupgrade,
+  reorder-python-imports, autoflake, strict mypy, plus whitespace/YAML hooks. CI runs
+  pre-commit and the test suite against a PostgreSQL service container.
+- **Testing:** tests exercise the public HTTP API, status codes and bodies, since that is
+  the contract clients rely on; plus a database test module proving that constraints hold
+  *even if the application were bypassed*. The riskiest parts (idempotency, locking, unique
+  races) have dedicated concurrent tests against real PostgreSQL. A migration-drift test
+  keeps models and migrations in sync.
 
-## On the choice of framework
+## AI-assisted development
 
-The choice of using Django in this challenge was deliverate not only for
-personal preference, but also for technical reasons. Django is a very mature
-web framework with a wide community support. It means it is well tested, and a
-lot of different libraries are built for and on top of django.
+> **TODO before submitting:** this section must be your own account. The notes below state
+> what can be said factually from how this solution was produced; complete or correct the
+> rest so that it is true.
 
-On the technical side of things, Django has been engineered to be loosely
-coupled and tightly integrated which means that switching components of the
-framework is easy, while the integration with the different components. This
-means that the use of the ORM during the requests as well as the testing is
-engineered together and it is trivially easy to write code that works
-flawlessly without any issues.
-
-In my experience, other frameworks along with ORMs do not have the luxury of
-being tightly integrated and and thus the integration falls on the hands of the
-developer. This might lead to performance degradation and other nasty surprises
-long after which would then not easily to be solved.
-
-It is also worth mentioning the Django Admin. The Django admin is a django app
-built with django itself which is easily configured which allow superusers to
-view the data in the database with q web interface instead of having to use SQL
-to do so. Moreover, being it sucha a good tool, it also benefits of a lot of
-customizability and packages with added features.
-
-## Limitations
-
-Django and Django REST Framework come with some known trade-offs:
-
-### **Synchronous by default.**
-
-Django supports async views, but much of the ecosystem,
-including parts of the ORM and many third-party packages, still runs
-synchronously under the hood. This is mitigated by the stateless design of the
-endpoints: each request is independent, so the service can be scaled
-horizontally by running multiple instances behind a load balancer.
-
-### **ORM query patterns.**
-
-As with any ORM, it is easy to introduce N+1 queries.
-Django offers `select_related` and `prefetch_related` to address this, but queries
-on performance-critical paths still need to be reviewed carefully, for example
-with query logging or django-debug-toolbar.
-
-### **Serialization speed.**
-
-DRF’s default serializers are slow for large result sets.
-If this becomes a bottleneck, there are faster alternatives, such as serpy,
-msgspec, or Django Ninja (which uses Pydantic), or serializing read-only
-endpoints directly from .values() querysets.
+- **Tools used:** Claude (Anthropic), as a chat/coding assistant.
+- **What I used it for:** reviewing my first submission against the brief, and porting the
+  service from Django/DRF to FastAPI/SQLAlchemy/Alembic while keeping the project structure,
+  tooling and test style.
+- **Validation of the generated code:** the SQL behaviour that the design depends on
+  (unique-constraint idempotency, 20 parallel identical inserts producing one row, the
+  `FOR SHARE` lock delaying a concurrent status update, `ON DELETE RESTRICT`) was checked by
+  hand against a real PostgreSQL 16. The Pydantic validation rules were exercised in isolation.
+  <!-- TODO: add the commands you ran and their results: pytest, mypy, pre-commit, docker compose up -->
+- **An AI-generated suggestion I changed or rejected:**
+  <!-- TODO: write one real example from your own review of the code. -->
+- **AGENTS.md / skills used:**
+  <!-- TODO: state which, if any (own or public) and what they do; otherwise "none". -->

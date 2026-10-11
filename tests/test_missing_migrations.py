@@ -1,15 +1,15 @@
-import pytest
-from django.core.management import call_command
+from alembic import command
 
 
-@pytest.mark.django_db
-def test_for_missing_migrations():
-    """If no migrations are detected as needed, `result`
-    will be `None`. In all other cases, the call will fail,
-    alerting your team that someone is trying to make a
-    change that requires a migration and that migration is
-    absent.
-    """
+def test_for_missing_migrations(alembic_config):
+    """Fails (CommandError) when the models differ from what the migrations produce, alerting
+    your team that someone changed a model and forgot the migration."""
+    command.check(alembic_config)
 
-    result = call_command("makemigrations", check=True, dry_run=True)
-    assert not result
+
+def test_migrations_can_be_reverted_and_reapplied(alembic_config):
+    try:
+        command.downgrade(alembic_config, "base")
+        command.upgrade(alembic_config, "head")
+    finally:
+        command.upgrade(alembic_config, "head")

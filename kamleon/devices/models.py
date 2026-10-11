@@ -1,33 +1,49 @@
-import random
+import enum
+import uuid
 
-from django.db import models
+from sqlalchemy import CheckConstraint
+from sqlalchemy import Enum
+from sqlalchemy import ForeignKey
+from sqlalchemy import String
+from sqlalchemy import Uuid
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
+
+from kamleon.db import Base
+from kamleon.db import TimestampMixin
 
 
-def default_serial_number() -> int:
-    return random.randint(100_000_000, 999_999_999)
+class DeviceStatus(enum.StrEnum):
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    FAULTY = "FAULTY"
 
 
-class StatusChoices(models.TextChoices):
-    active = ("ACTIVE", "Active")
-    inactive = ("INACTIVE", "Inactive")
-    faulty = ("FAULTY", "Faulty")
-
-
-class Device(models.Model):
-    customer = models.ForeignKey(
-        "identity.Customer",
-        on_delete=models.CASCADE,
-        verbose_name="devices",
+class Device(TimestampMixin, Base):
+    __tablename__ = "devices"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('ACTIVE', 'INACTIVE', 'FAULTY')",
+            name="device_status",
+        ),
     )
-    serial_number = models.PositiveIntegerField(
-        default=default_serial_number,
-        unique=True,
-        db_index=True,
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    # Chosen by the caller (it is the factory serial printed on the product), not generated.
+    serial_number: Mapped[str] = mapped_column(String(64), unique=True)
+    # RESTRICT: a customer that still has devices can never be hard-deleted by accident.
+    customer_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("customers.id", ondelete="RESTRICT"),
+        index=True,
     )
-    status = models.CharField(
-        max_length=50,
-        choices=StatusChoices,
-        default=StatusChoices.inactive,
+    status: Mapped[DeviceStatus] = mapped_column(
+        Enum(
+            DeviceStatus,
+            name="device_status",
+            native_enum=False,
+            length=16,
+            create_constraint=False,
+            validate_strings=True,
+        ),
+        default=DeviceStatus.INACTIVE,
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)

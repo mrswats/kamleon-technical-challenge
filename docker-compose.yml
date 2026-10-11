@@ -1,29 +1,20 @@
 ---
 services:
   db:
-    image: postgres:latest
+    image: postgres:17
     ports:
       - 5432:5432
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
-      interval: 10s
-      retries: 5
-      start_period: 30s
-      timeout: 10s
-
-  cache:
-    image: redis:latest
-    ports:
-      - 6379:6379
-    healthcheck:
-      test: ["CMD", "redis-cli","ping"]
-      interval: 10s
-      retries: 5
-      start_period: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 10
+      start_period: 10s
+      timeout: 5s
 
   api:
     image: kamleon:local
@@ -31,28 +22,11 @@ services:
     ports:
       - 8000:8000
     environment:
-      SECRET_KEY: '(w4yh%mi=m+97ftp+(gv2#gtkv22z$(4elyjkw$+s!jzco1!w%'
-      ALLOWED_HOSTS: localhost
-      REDIS_URL: redis://cache:6379/0
-      DATABASE_NAME: postgres
-      DATABASE_USER: postgres
-      DATABASE_PASSWORD: postgres
-      DATABASE_PORT: "5432"
-      DATABASE_HOST: db
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/postgres
       MODE: api
-
     depends_on:
-      - db
-      - cache
+      db:
+        condition: service_healthy
 
-  worker:
-    image: kamleon:local
-    build: .
-    environment:
-      MODE: worker
-      DEFAULT_QUEUE: default
-      REDIS_URL: redis://cache:6379/0
-
-    depends_on:
-      - db
-      - cache
+volumes:
+  pgdata:
