@@ -16,7 +16,7 @@ class StatusChoices(models.TextChoices):
 class Device(models.Model):
     customer = models.ForeignKey(
         "identity.Customer",
-        on_delete=models.DO_NOTHING,
+        on_delete=models.CASCADE,
         verbose_name="devices",
     )
     serial_number = models.PositiveIntegerField(

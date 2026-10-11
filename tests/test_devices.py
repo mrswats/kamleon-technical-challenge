@@ -79,6 +79,12 @@ def test_retrieve_device_status_code(retrieve_device, device):
 
 
 @pytest.mark.django_db
+def test_retrieve_device_non_existing_status_code(retrieve_device):
+    response = retrieve_device(3141592)
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
+@pytest.mark.django_db
 def test_retrieve_device_data(retrieve_device, device):
     response = retrieve_device(device.serial_number)
     assert response.json() == {

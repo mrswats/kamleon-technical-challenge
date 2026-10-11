@@ -6,10 +6,11 @@ from django.db import models
 class Measurement(models.Model):
     device = models.ForeignKey(
         "devices.Device",
-        on_delete=models.DO_NOTHING,
+        on_delete=models.CASCADE,
         verbose_name="measurements",
     )
-    measurement_hash = models.PositiveIntegerField(
+    measurement_hash = models.CharField(
+        max_length=256,
         unique=True,
     )
     kuid = models.UUIDField(
@@ -22,3 +23,6 @@ class Measurement(models.Model):
     timestamp = models.FloatField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-timestamp"]

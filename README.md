@@ -7,7 +7,7 @@ This repository contains my solution to the Kamleon Technical Challenge.
 Create a virtual Environment, install dependencies.
 
 ```console
-virtualenv .venv -p pytthon 3.14
+virtualenv .venv -p python 3.14
 source .venv/bin/activate
 pip install -r test-requirements.txt
 ```
@@ -28,7 +28,7 @@ docker compose build
 docker compose up -d
 ```
 
-Then, the API server is accessible on `http://localhost:8080/`
+Then, the API server is accessible on `http://localhost:8000/`
 
 ### Running migrations
 
@@ -72,14 +72,14 @@ The data model is as follows:
 
 ![Data model](./img/models.png)
 
-The data model follows the specification. We have a `Costumer` table which is
+The data model follows the specification. We have a `Custumer` table which is
 related to the `User` model, which contains the authorization data (`username`
 and `password`). The `Customer` model also includes a `kid` field which is a
 unique value for each row, and used to lookup customers during an API call in
 the database.
 
-Then, the `Device` model is related through a foreign key to the `Costumer`, so
-a `Costumer` can have many `Devices`. This model, contains a `status` which
+Then, the `Device` model is related through a foreign key to the `Custumer`, so
+a `Custumer` can have many `Devices`. This model, contains a `status` which
 only accepts three values: `Active`, `Inactive` and `Faulted`. This field could
 be expanded in the future more stats where needed. The `serial_number` is a
 randomly generated on create and it is used as an ID for retriving data from
@@ -90,17 +90,18 @@ Finally, the measurement table, which contains the measurement data: `unit`,
 `Device`. Additionally, a `measurement_hash` field is included so that we have
 an easy way to check whether a measurement exists in the database, with an
 index. This model also includes a `kid` field in the same way as in the
-costumer model.
+custumer model.
 
 All the models contain a `created_at` and an `updated_at` fields that are
 automatically created and updated when appropriate. The foreign keys are
 configured so that no data is deleted when related rows are, so that we do not
 lose any data.
 
-Considering the GDPR law, however, when a customer is deleted, all the
-identifying data should be anonimized. However, as per the law, we should hold
-on onto that data so all the related customer data should be extracted and
-removed from the database, and stored somewhere else in case it is requested.
+Under the GDPR, when a customer is deleted, their personal data should be
+erased or anonymized, unless we are legally required to retain some of it (for
+example, invoices for tax purposes). Any data that must be retained should be
+separated from the operational database, access to it should be restricted, and
+it should be deleted once the legal retention period expires.
 
 ## API Design
 
@@ -113,7 +114,8 @@ will always return a `201` HTTP Status regardless the measurement already
 exists or the device is Inactive.
 
 The API Documentation can be accessed while running the server at
-[http://localhost:8000/docs/](http://localhost:8000/docs/).
+[http://localhost:8000/docs/](http://localhost:8000/docs/). The OpenAPI standard
+is used and it includes `curl` examples there.
 
 ## Encryption and data communications protocols
 
@@ -185,6 +187,47 @@ for some of the side effects and in particular the worker which while it's not
 part of the public API, it is an important component of the business logic,
 was tested thoroughly as well.
 
+## What would I improve with more time
+
+### Correctness and robustness
+
+Broader tests. Integration tests for the full request cycle, edge cases
+(invalid input, duplicate records, deleting an already-deleted customer), and a
+coverage report in CI. Stricter validation and consistent errors. A single
+error format across all endpoints, with clear status codes. Idempotency and
+concurrency handling. Idempotency keys for create operations and transactions
+or locking where concurrent updates could conflict.
+
+### Data and GDPR
+
+A proper erasure workflow. A deletion endpoint or job that anonymizes
+identifying fields while keeping legally required records (e.g. invoices) in a
+separate, access-restricted store with a defined retention period. Automated
+retention. A scheduled task that purges retained data when its retention period
+expires. Audit logging. A record of who accessed, changed, or deleted personal
+data, without storing the personal data itself in the logs. Data export. An
+endpoint for subject access and portability requests. Soft delete vs. hard
+delete. A clear, documented policy for each model.
+
+### Security
+
+Stronger authentication and permissions. JWT or OAuth2, role-based permissions,
+and per-object access checks. Rate limiting and throttling. DRF throttling at
+minimum, plus protection at the gateway level. Secrets and configuration.
+Environment-based settings, no secrets in the repo, and separate settings per
+environment. Dependency scanning. Tools like pip-audit or Dependabot, plus a
+security headers check.
+
+### Performance and scalability
+
+Query optimisation. Fix N+1 queries, add database indexes, and use
+django-debug-toolbar or query logging to find them. Pagination and filtering.
+Cursor-based pagination for large collections. Caching. Redis for frequently
+read, rarely changed data. Production database. Move from SQLite to PostgreSQL
+with connection pooling. Background jobs. Celery or RQ for slow or scheduled
+work such as exports, emails, and retention clean-up. Load testing. Locust or
+k6 to find real bottlenecks instead of guessing.
+
 ## AI Development
 
 No AI assistence was used during the development of this challenge.
@@ -207,3 +250,35 @@ In my experience, other frameworks along with ORMs do not have the luxury of
 being tightly integrated and and thus the integration falls on the hands of the
 developer. This might lead to performance degradation and other nasty surprises
 long after which would then not easily to be solved.
+
+It is also worth mentioning the Django Admin. The Django admin is a django app
+built with django itself which is easily configured which allow superusers to
+view the data in the database with q web interface instead of having to use SQL
+to do so. Moreover, being it sucha a good tool, it also benefits of a lot of
+customizability and packages with added features.
+
+## Limitations
+
+Django and Django REST Framework come with some known trade-offs:
+
+### **Synchronous by default.**
+
+Django supports async views, but much of the ecosystem,
+including parts of the ORM and many third-party packages, still runs
+synchronously under the hood. This is mitigated by the stateless design of the
+endpoints: each request is independent, so the service can be scaled
+horizontally by running multiple instances behind a load balancer.
+
+### **ORM query patterns.**
+
+As with any ORM, it is easy to introduce N+1 queries.
+Django offers `select_related` and `prefetch_related` to address this, but queries
+on performance-critical paths still need to be reviewed carefully, for example
+with query logging or django-debug-toolbar.
+
+### **Serialization speed.**
+
+DRF’s default serializers are slow for large result sets.
+If this becomes a bottleneck, there are faster alternatives, such as serpy,
+msgspec, or Django Ninja (which uses Pydantic), or serializing read-only
+endpoints directly from .values() querysets.

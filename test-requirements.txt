@@ -289,10 +289,15 @@ django==6.1.2 \
     --hash=sha256:a1e92451ccb8b514e91bbb3b6d186d20b4030558f116b5d9de6535455ff210b7
     # via
     #   awesome-python-project (pyproject.toml)
+    #   django-filter
     #   django-simple-docs
     #   djangorestframework
     #   djangorestframework-simplejwt
     #   drf-spectacular
+django-filter==26.2 \
+    --hash=sha256:df8f737841d6359df00b84dda9b5ab59067fe60292091f1bdae1e3e6281cedb0 \
+    --hash=sha256:fd5cc83995fbe9f5f07fb5dcda16fde0f04de1ecf8ef82628b6c0ec921b751af
+    # via awesome-python-project (pyproject.toml)
 django-rest-framework==0.1.0 \
     --hash=sha256:47a8f496fa69e3b6bd79f68dd7a1527d907d6b77f009e9db7cf9bb21cc565e4a
     # via awesome-python-project (pyproject.toml)
