@@ -1,34 +1,39 @@
 [project]
-name = "awesome-python-project"
+name = "kamleon"
 version = "0.1.0"
-description = ""
+description = "Customers, connected devices and their measurements: a FastAPI + PostgreSQL service"
 readme = "README.md"
-requires-python = ">=3.14.1"
-dependencies = [
-    "django",
-    "django-filter",
-    "django-rest-framework",
-    "django-simple-docs",
-    "djangorestframework-simplejwt[crypto]",
-    "gunicorn",
-    "psycopg[binary]",
-    "redis",
-    "rq",
+requires-python = ">=3.14"
+license = "MIT"
+license-files = [
+    "LICENSE",
 ]
-
-[project.license]
-file = "LICENSE"
+dependencies = [
+    "alembic",
+    "fastapi",
+    "psycopg[binary]",
+    "pydantic-settings",
+    "pydantic[email]",
+    "sqlalchemy",
+    "sqlalchemy[asyncio]",
+    "uvicorn",
+    "uvicorn-worker",
+]
 
 [project.optional-dependencies]
 test = [
     "covdefaults",
     "fakeredis",
+    "httpx",
     "pytest",
+    "pytest-asyncio",
     "pytest-cov",
-    "pytest-django",
     "pytest-randomly",
     "pytest-xdist",
-    "time-machine",
+]
+dev = [
+    "mypy",
+    "pre-commit",
 ]
 
 [build-system]
@@ -38,6 +43,9 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
+include = [
+    "kamleon*",
+]
 
 [tool.autoflake]
 recursive = true
@@ -48,21 +56,23 @@ ignore_missing_imports = true
 strict = true
 exclude = [
     "tests/",
+    "migrations/",
 ]
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "tests.settings"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = [
+    "tests",
+]
 
 [tool.coverage.run]
 plugins = [
     "covdefaults",
 ]
 omit = [
-    "manage.py",
-    "tests/settings.py",
     "kamleon/asgi.py",
-    "kamleon/wsgi.py",
-    "kamleon/settings/*.py",
+    "migrations/*",
 ]
 
 [tool.coverage.html]

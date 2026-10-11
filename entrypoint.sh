@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
 
-set -exuo pipefail
+set -euo pipefail
 
 main() {
-    pg_isready -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U postgres
-
-    MODE=${MODE:-api}
-
-    if [ "$MODE" = "api"]; then
-        python -m manage migrate --settings kamleon.settings.production
-        gunicorn "kamleon.wsgi:application"
-    elif [ "$MODE" = "worker" ]; then
-        python -m worker "$REDIS_URL" "$QUEUE"
-    fi
+    case "${MODE:-api}" in
+        api)
+            # Apply pending migrations, then serve. With several replicas, run the
+            # `migrate` mode once as a separate job instead.
+            alembic upgrade head
+            exec gunicorn "kamleon.asgi:app"
+            ;;
+        migrate)
+            exec alembic upgrade head
+            ;;
+        *)
+            echo "Unknown MODE: ${MODE}. Expected 'api' or 'migrate'." >&2
+            exit 64
+            ;;
+    esac
 }
 
 main "$@"
