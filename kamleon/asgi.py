@@ -1,7 +1,3 @@
-import os
+from kamleon.main import create_app
 
-from django.core.asgi import get_asgi_application
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "kamleon.settings.production")
-
-application = get_asgi_application()
+app = create_app()
